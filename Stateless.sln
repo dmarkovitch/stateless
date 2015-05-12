@@ -18,8 +18,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{9DBF0687-CF52-4E52-AE4E-5C123A455E15}"
 	ProjectSection(SolutionItems) = preProject
+		.nuget\NuGet.Config = .nuget\NuGet.Config
+		.nuget\NuGet.exe = .nuget\NuGet.exe
+		.nuget\NuGet.targets = .nuget\NuGet.targets
 		.nuget\packages.config = .nuget\packages.config
 	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{36950440-77F8-47E8-9A1D-73CDE2201794}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -50,5 +55,10 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{3A56311E-C3AC-4E34-A1DF-CA5042A31039} = {36950440-77F8-47E8-9A1D-73CDE2201794}
+		{69512CD4-53C5-4702-B0F6-E7EFA4897525} = {36950440-77F8-47E8-9A1D-73CDE2201794}
+		{F952836B-D548-4586-8974-59343D575A66} = {36950440-77F8-47E8-9A1D-73CDE2201794}
 	EndGlobalSection
 EndGlobal

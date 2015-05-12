@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using NUnit.Framework;
 
 namespace Stateless.Tests
@@ -15,7 +16,7 @@ namespace Stateless.Tests
         [Test]
         public void CanUseReferenceTypeMarkers()
         {
-            RunSimpleTest(
+            RunSimpleTest<string, string>(
                 new[] { StateA, StateB, StateC },
                 new[] { TriggerX, TriggerY });
         }
@@ -23,7 +24,7 @@ namespace Stateless.Tests
         [Test]
         public void CanUseValueTypeMarkers()
         {
-            RunSimpleTest(
+            RunSimpleTest<State, Trigger>(
                 Enum.GetValues(typeof(State)).Cast<State>(),
                 Enum.GetValues(typeof(Trigger)).Cast<Trigger>());
         }
@@ -35,7 +36,7 @@ namespace Stateless.Tests
             var x = transitions.First();
 
             var sm = new StateMachine<TState, TTransition>(a);
-
+            
             sm.Configure(a)
                 .Permit(x, b);
 
@@ -79,7 +80,7 @@ namespace Stateless.Tests
         public void WhenInSubstate_TriggerIgnoredInSuperstate_RemainsInSubstate()
         {
             var sm = new StateMachine<State, Trigger>(State.B);
-
+            
             sm.Configure(State.B)
                 .SubstateOf(State.C);
 
@@ -98,7 +99,7 @@ namespace Stateless.Tests
 
             sm.Configure(State.A)
                 .Permit(Trigger.Z, State.B);
-
+            
             sm.Configure(State.B)
                 .SubstateOf(State.C)
                 .Permit(Trigger.X, State.A);
@@ -251,50 +252,6 @@ namespace Stateless.Tests
 
             Assert.AreEqual(State.B, state);
             Assert.AreEqual(Trigger.Z, trigger);
-        }
-
-        [Test]
-        public void WhenATransitionOccurs_TheOnTransitionEventFires()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
-
-            sm.Configure(State.B)
-                .Permit(Trigger.X, State.A);
-
-            StateMachine<State, Trigger>.Transition transition = null;
-            sm.OnTransitioned(t => transition = t);
-
-            sm.Fire(Trigger.X);
-
-            Assert.IsNotNull(transition);
-            Assert.AreEqual(Trigger.X, transition.Trigger);
-            Assert.AreEqual(State.B, transition.Source);
-            Assert.AreEqual(State.A, transition.Destination);
-        }
-
-        [Test]
-        public void TheOnTransitionEventFiresBeforeTheOnEntryEvent()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
-            var expectedOrdering = new List<string> { "OnExit", "OnTransitioned", "OnEntry" };
-            var actualOrdering = new List<string>();
-
-            sm.Configure(State.B)
-                .Permit(Trigger.X, State.A)
-                .OnExit(() => actualOrdering.Add("OnExit"));
-
-            sm.Configure(State.A)
-                .OnEntry(() => actualOrdering.Add("OnEntry"));
-
-            sm.OnTransitioned(t => actualOrdering.Add("OnTransitioned"));
-
-            sm.Fire(Trigger.X);
-
-            Assert.AreEqual(expectedOrdering.Count, actualOrdering.Count);
-            for (int i = 0; i < expectedOrdering.Count; i++)
-            {
-                Assert.AreEqual(expectedOrdering[i], actualOrdering[i]);
-            }
         }
     }
 }
