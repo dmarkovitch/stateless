@@ -17,6 +17,8 @@ namespace BugTrackerExample
             bug.Assign("Fred");
             bug.Close();
 
+			bug.Assign("Failure");
+
             Console.ReadKey(false);
         }
     }

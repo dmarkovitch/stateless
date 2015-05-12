@@ -261,7 +261,6 @@ namespace Stateless
 
 				CurrentRepresentation.Exit(transition, args);
 				State = transition.Destination;
-
 				if (_allStateOnEntry != null)
 				{
 					_allStateOnEntry(transition);
