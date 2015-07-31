@@ -22,10 +22,7 @@ namespace Stateless
 		/// <summary>
 		/// A unique identifier for this state machine.
 		/// </summary>
-		public Guid Id
-		{
-			get { return this._id; }
-		}
+		public Guid Id => this._id;
 	}
 
 	/// <summary>
@@ -42,6 +39,8 @@ namespace Stateless
 		Action<TState, TTrigger> _unhandledTriggerAction = DefaultUnhandledTriggerAction;
 		private Action<Transition> _allStateOnEntry;
 		event Action<Transition> _onTransitioned;
+		private readonly Dictionary<TTrigger, TriggerBehaviour> _globalTriggerBehaviours =
+			new Dictionary<TTrigger, TriggerBehaviour>();
 
 		/// <summary>
 		/// Construct a state machine with external state storage.
@@ -92,31 +91,20 @@ namespace Stateless
 		/// <summary>
 		/// The currently-permissible trigger values.
 		/// </summary>
-		public IEnumerable<TTrigger> PermittedTriggers
-		{
-			get
-			{
-				return CurrentRepresentation.PermittedTriggers;
-			}
-		}
+		public IEnumerable<TTrigger> PermittedTriggers => CurrentRepresentation.PermittedTriggers;
 
-		StateRepresentation CurrentRepresentation
-		{
-			get
-			{
-				return GetRepresentation(State);
-			}
-		}
+		StateRepresentation CurrentRepresentation => GetRepresentation(State);
 
 		StateRepresentation GetRepresentation(TState state)
 		{
 			StateRepresentation result;
 
-			if (!_stateConfiguration.TryGetValue(state, out result))
+			if (_stateConfiguration.TryGetValue(state, out result))
 			{
-				result = new StateRepresentation(state);
-				_stateConfiguration.Add(state, result);
+				return result;
 			}
+			result = new StateRepresentation(state);
+			_stateConfiguration.Add(state, result);
 
 			return result;
 		}
@@ -127,10 +115,7 @@ namespace Stateless
 		/// <value>
 		/// <c>true</c> if this current state is terminal; otherwise, <c>false</c>.
 		/// </value>
-		public bool IsInTerminalState
-		{
-			get { return CurrentRepresentation.IsTerminal; }
-		}
+		public bool IsInTerminalState => CurrentRepresentation.IsTerminal;
 
 		/// <summary>
 		/// Begin configuration of the entry/exit actions and allowed transitions
@@ -141,6 +126,19 @@ namespace Stateless
 		public StateConfiguration Configure(TState state)
 		{
 			return new StateConfiguration(GetRepresentation(state), GetRepresentation);
+		}
+
+		/// <summary>
+		/// Configures an array of triggers that are global to all states.
+		/// </summary>
+		/// <param name="triggers">An array of accepted triggers.</param>
+		/// <param name="destinationState">The state that the triggers will cause a transition to.</param>
+		public void ConfigureGlobal(TTrigger[] triggers, TState destinationState)
+		{
+			foreach (var trigger in triggers)
+			{
+				_globalTriggerBehaviours.Add(trigger, new TransitioningTriggerBehaviour(trigger, destinationState, () => true));
+			}
 		}
 
 		/// <summary>
@@ -247,7 +245,8 @@ namespace Stateless
 				return;
 
 			TriggerBehaviour triggerBehaviour;
-			if (!CurrentRepresentation.TryFindHandler(trigger, out triggerBehaviour))
+			if (!_globalTriggerBehaviours.TryGetValue(trigger, out triggerBehaviour) &&
+				!CurrentRepresentation.TryFindHandler(trigger, out triggerBehaviour))
 			{
 				_unhandledTriggerAction(CurrentRepresentation.UnderlyingState, trigger);
 				return;
@@ -261,15 +260,9 @@ namespace Stateless
 
 				CurrentRepresentation.Exit(transition, args);
 				State = transition.Destination;
-				if (_allStateOnEntry != null)
-				{
-					_allStateOnEntry(transition);
-				}
+				_allStateOnEntry?.Invoke(transition);
 
-				if (_onTransitioned != null)
-				{
-					_onTransitioned(transition);
-				}
+				_onTransitioned?.Invoke(transition);
 
 				CurrentRepresentation.Enter(transition, args);
 			}
@@ -282,7 +275,7 @@ namespace Stateless
 		/// <param name="unhandledTriggerAction">An action to call when an unhandled trigger is fired.</param>
 		public void OnUnhandledTrigger(Action<TState, TTrigger> unhandledTriggerAction)
 		{
-			if (unhandledTriggerAction == null) throw new ArgumentNullException("unhandledTriggerAction");
+			if (unhandledTriggerAction == null) throw new ArgumentNullException(nameof(unhandledTriggerAction));
 			_unhandledTriggerAction = unhandledTriggerAction;
 		}
 
@@ -305,7 +298,10 @@ namespace Stateless
 		/// <returns>True if the trigger can be fired, false otherwise.</returns>
 		public bool CanFire(TTrigger trigger)
 		{
-			return CurrentRepresentation.IsTerminal || CurrentRepresentation.CanHandle(trigger);
+			TriggerBehaviour triggerBehaviour;
+			var isGlobalTrigger = _globalTriggerBehaviours.TryGetValue(trigger, out triggerBehaviour);
+
+			return CurrentRepresentation.IsTerminal || isGlobalTrigger || CurrentRepresentation.CanHandle(trigger);
 		}
 
 		/// <summary>
@@ -391,7 +387,7 @@ namespace Stateless
 		{
 			if (onTransitionAction == null)
 			{
-				throw new ArgumentNullException("onTransitionAction");
+				throw new ArgumentNullException(nameof(onTransitionAction));
 			}
 
 			_onTransitioned += onTransitionAction;
