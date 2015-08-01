@@ -15,7 +15,7 @@ namespace Stateless.Tests
 		[Test]
 		public void CanUseReferenceTypeMarkers()
 		{
-			RunSimpleTest<string, string>(
+			RunSimpleTest(
 				new[] { StateA, StateB, StateC },
 				new[] { TriggerX, TriggerY });
 		}
@@ -23,12 +23,12 @@ namespace Stateless.Tests
 		[Test]
 		public void CanUseValueTypeMarkers()
 		{
-			RunSimpleTest<State, Trigger>(
+			RunSimpleTest(
 				Enum.GetValues(typeof(State)).Cast<State>(),
 				Enum.GetValues(typeof(Trigger)).Cast<Trigger>());
 		}
 
-		void RunSimpleTest<TState, TTransition>(IEnumerable<TState> states, IEnumerable<TTransition> transitions)
+		static void RunSimpleTest<TState, TTransition>(IEnumerable<TState> states, IEnumerable<TTransition> transitions)
 		{
 			var a = states.First();
 			var b = states.Skip(1).First();
@@ -127,7 +127,7 @@ namespace Stateless.Tests
 		{
 			var sm = new StateMachine<State, Trigger>(State.A);
 
-			sm.ConfigureGlobal(new[] { Trigger.Z }, State.C);
+			sm.ConfigureGlobalTriggers(new[] { Trigger.Z }, State.C);
 
 			sm.Configure(State.A).Permit(Trigger.X, State.B);
 

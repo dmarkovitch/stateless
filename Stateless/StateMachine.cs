@@ -133,7 +133,7 @@ namespace Stateless
 		/// </summary>
 		/// <param name="triggers">An array of accepted triggers.</param>
 		/// <param name="destinationState">The state that the triggers will cause a transition to.</param>
-		public void ConfigureGlobal(TTrigger[] triggers, TState destinationState)
+		public void ConfigureGlobalTriggers(TTrigger[] triggers, TState destinationState)
 		{
 			foreach (var trigger in triggers)
 			{
@@ -245,8 +245,8 @@ namespace Stateless
 				return;
 
 			TriggerBehaviour triggerBehaviour;
-			if (!_globalTriggerBehaviours.TryGetValue(trigger, out triggerBehaviour) &&
-				!CurrentRepresentation.TryFindHandler(trigger, out triggerBehaviour))
+			if (!CurrentRepresentation.TryFindHandler(trigger, out triggerBehaviour) &&
+				!_globalTriggerBehaviours.TryGetValue(trigger, out triggerBehaviour))
 			{
 				_unhandledTriggerAction(CurrentRepresentation.UnderlyingState, trigger);
 				return;
@@ -254,18 +254,20 @@ namespace Stateless
 
 			var source = State;
 			TState destination;
-			if (triggerBehaviour.ResultsInTransitionFrom(source, args, out destination))
+			if (!triggerBehaviour.ResultsInTransitionFrom(source, args, out destination))
 			{
-				var transition = new Transition(source, destination, trigger);
-
-				CurrentRepresentation.Exit(transition, args);
-				State = transition.Destination;
-				_allStateOnEntry?.Invoke(transition);
-
-				_onTransitioned?.Invoke(transition);
-
-				CurrentRepresentation.Enter(transition, args);
+				return;
 			}
+
+			var transition = new Transition(source, destination, trigger);
+
+			CurrentRepresentation.Exit(transition, args);
+			State = transition.Destination;
+			_allStateOnEntry?.Invoke(transition);
+
+			_onTransitioned?.Invoke(transition);
+
+			CurrentRepresentation.Enter(transition, args);
 		}
 
 		/// <summary>
@@ -301,7 +303,7 @@ namespace Stateless
 			TriggerBehaviour triggerBehaviour;
 			var isGlobalTrigger = _globalTriggerBehaviours.TryGetValue(trigger, out triggerBehaviour);
 
-			return CurrentRepresentation.IsTerminal || isGlobalTrigger || CurrentRepresentation.CanHandle(trigger);
+			return CurrentRepresentation.IsTerminal || CurrentRepresentation.CanHandle(trigger) || isGlobalTrigger;
 		}
 
 		/// <summary>
