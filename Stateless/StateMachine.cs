@@ -129,7 +129,7 @@ namespace Stateless
 		}
 
 		/// <summary>
-		/// Configures an array of triggers that are global to all states.
+		/// Configures triggers that are global to all states. These can be overridden at the state configuration level.
 		/// </summary>
 		/// <param name="triggers">An array of accepted triggers.</param>
 		/// <param name="destinationState">The state that the triggers will cause a transition to.</param>
