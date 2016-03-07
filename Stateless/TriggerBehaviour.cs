@@ -18,7 +18,12 @@ namespace Stateless
 				_guard = guard;
 			}
 
+<<<<<<< HEAD
 			public TTrigger Trigger { get { return _trigger; } }
+=======
+            public TTrigger Trigger { get { return _trigger; } }
+            internal Func<bool> Guard { get { return _guard; } }
+>>>>>>> refs/remotes/nblumhardt/master
 
 			public bool IsGuardConditionMet
 			{
