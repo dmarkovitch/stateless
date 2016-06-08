@@ -36,7 +36,7 @@ namespace Stateless
 		readonly IDictionary<TTrigger, TriggerWithParameters> _triggerConfiguration = new Dictionary<TTrigger, TriggerWithParameters>();
 		readonly Func<TState> _stateAccessor;
 		readonly Action<TState> _stateMutator;
-		Action<TState, TTrigger> _unhandledTriggerAction = DefaultUnhandledTriggerAction;
+		Action<TState, TTrigger> _unhandledTriggerAction;
 		private Action<Transition> _allStateOnEntry;
 		event Action<Transition> _onTransitioned;
 		private readonly Dictionary<TTrigger, TriggerBehaviour> _globalTriggerBehaviours =
@@ -57,11 +57,19 @@ namespace Stateless
 		/// Construct a state machine.
 		/// </summary>
 		/// <param name="initialState">The initial state.</param>
-		public StateMachine(TState initialState)
+		public StateMachine(TState initialState) : this()
 		{
 			var reference = new StateReference { State = initialState };
 			_stateAccessor = () => reference.State;
 			_stateMutator = s => reference.State = s;
+		}
+
+		/// <summary>
+		/// Default constuctor
+		/// </summary>
+		StateMachine()
+		{
+			_unhandledTriggerAction = DefaultUnhandledTriggerAction;
 		}
 
 		/// <summary>
@@ -125,7 +133,7 @@ namespace Stateless
 		/// <returns>A configuration object through which the state can be configured.</returns>
 		public StateConfiguration Configure(TState state)
 		{
-			return new StateConfiguration(GetRepresentation(state), GetRepresentation);
+			return new StateConfiguration(this, GetRepresentation(state), GetRepresentation);
 		}
 
 		/// <summary>
@@ -151,7 +159,7 @@ namespace Stateless
 			StateRepresentation stateRepresentation = GetRepresentation(state);
 			stateRepresentation.IsTerminal = true;
 
-			return new StateConfiguration(stateRepresentation, GetRepresentation);
+			return new StateConfiguration(this, stateRepresentation, GetRepresentation);
 		}
 
 		/// <summary>
@@ -261,7 +269,7 @@ namespace Stateless
 
 			var transition = new Transition(source, destination, trigger);
 
-			CurrentRepresentation.Exit(transition, args);
+			CurrentRepresentation.Exit(transition);
 			State = transition.Destination;
 			_allStateOnEntry?.Invoke(transition);
 
@@ -323,7 +331,7 @@ namespace Stateless
 		/// </summary>
 		/// <typeparam name="TArg0">Type of the first trigger argument.</typeparam>
 		/// <param name="trigger">The underlying trigger value.</param>
-		/// <returns>An object that can be passed to the Fire() method in order to 
+		/// <returns>An object that can be passed to the Fire() method in order to
 		/// fire the parameterised trigger.</returns>
 		public TriggerWithParameters<TArg0> SetTriggerParameters<TArg0>(TTrigger trigger)
 		{
@@ -338,7 +346,7 @@ namespace Stateless
 		/// <typeparam name="TArg0">Type of the first trigger argument.</typeparam>
 		/// <typeparam name="TArg1">Type of the second trigger argument.</typeparam>
 		/// <param name="trigger">The underlying trigger value.</param>
-		/// <returns>An object that can be passed to the Fire() method in order to 
+		/// <returns>An object that can be passed to the Fire() method in order to
 		/// fire the parameterised trigger.</returns>
 		public TriggerWithParameters<TArg0, TArg1> SetTriggerParameters<TArg0, TArg1>(TTrigger trigger)
 		{
@@ -354,7 +362,7 @@ namespace Stateless
 		/// <typeparam name="TArg1">Type of the second trigger argument.</typeparam>
 		/// <typeparam name="TArg2">Type of the third trigger argument.</typeparam>
 		/// <param name="trigger">The underlying trigger value.</param>
-		/// <returns>An object that can be passed to the Fire() method in order to 
+		/// <returns>An object that can be passed to the Fire() method in order to
 		/// fire the parameterised trigger.</returns>
 		public TriggerWithParameters<TArg0, TArg1, TArg2> SetTriggerParameters<TArg0, TArg1, TArg2>(TTrigger trigger)
 		{
@@ -372,8 +380,20 @@ namespace Stateless
 			_triggerConfiguration.Add(trigger.Trigger, trigger);
 		}
 
-		static void DefaultUnhandledTriggerAction(TState state, TTrigger trigger)
+		void DefaultUnhandledTriggerAction(TState state, TTrigger trigger)
 		{
+			var source = state;
+			var representativeState = GetRepresentation(source);
+
+			TriggerBehaviour triggerBehaviour;
+			if (representativeState.TryFindHandlerWithUnmetGuardCondition(trigger, out triggerBehaviour))
+			{
+				throw new InvalidOperationException(
+					string.Format(
+						StateMachineResources.NoTransitionsUnmetGuardCondition,
+						trigger, state, triggerBehaviour.GuardDescription));
+			}
+
 			throw new InvalidOperationException(
 				string.Format(
 					StateMachineResources.NoTransitionsPermitted,

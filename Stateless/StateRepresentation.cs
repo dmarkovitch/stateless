@@ -14,8 +14,12 @@ namespace Stateless
 			readonly IDictionary<TTrigger, ICollection<TriggerBehaviour>> _triggerBehaviours =
 				new Dictionary<TTrigger, ICollection<TriggerBehaviour>>();
 
-			readonly ICollection<Action<Transition, object[]>> _entryActions = new List<Action<Transition, object[]>>();
-			readonly ICollection<Action<Transition, object[]>> _exitActions = new List<Action<Transition, object[]>>();
+            internal IDictionary<TTrigger, ICollection<TriggerBehaviour>> TriggerBehaviours { get { return _triggerBehaviours; } }
+
+            readonly ICollection<EntryActionBehavior> _entryActions = new List<EntryActionBehavior>();
+            internal ICollection<EntryActionBehavior> EntryActions { get { return _entryActions; } }
+            readonly ICollection<ExitActionBehavior> _exitActions = new List<ExitActionBehavior>();
+            internal ICollection<ExitActionBehavior> ExitActions { get { return _exitActions; } }
 
 			StateRepresentation _superstate; // null
 
@@ -46,22 +50,22 @@ namespace Stateless
 				return TryFindHandler(trigger, out unused);
 			}
 
-			public bool TryFindHandler(TTrigger trigger, out TriggerBehaviour handler)
-			{
-				return (TryFindLocalHandler(trigger, out handler) ||
-					(Superstate != null && Superstate.TryFindHandler(trigger, out handler)));
-			}
+            public bool TryFindHandler(TTrigger trigger, out TriggerBehaviour handler)
+            {
+                return (TryFindLocalHandler(trigger, out handler, t => t.IsGuardConditionMet) ||
+                    (Superstate != null && Superstate.TryFindHandler(trigger, out handler)));
+            }
+            
+            bool TryFindLocalHandler(TTrigger trigger, out TriggerBehaviour handler, params Func<TriggerBehaviour, bool>[] filters)
+            {
+                ICollection<TriggerBehaviour> possible;
+                if (!_triggerBehaviours.TryGetValue(trigger, out possible))
+                {
+                    handler = null;
+                    return false;
+                }
 
-			bool TryFindLocalHandler(TTrigger trigger, out TriggerBehaviour handler)
-			{
-				ICollection<TriggerBehaviour> possible;
-				if (!_triggerBehaviours.TryGetValue(trigger, out possible))
-				{
-					handler = null;
-					return false;
-				}
-
-				var actual = possible.Where(at => at.IsGuardConditionMet).ToArray();
+                var actual = filters.Aggregate(possible, (current, filter) => current.Where(filter).ToArray());
 
 				if (actual.Count() > 1)
 					throw new InvalidOperationException(
@@ -72,39 +76,43 @@ namespace Stateless
 				return handler != null;
 			}
 
-			public void AddEntryAction(TTrigger trigger, Action<Transition, object[]> action)
-			{
-				Enforce.ArgumentNotNull(action, "action");
-				_entryActions.Add((t, args) =>
-				{
-					if (t.Trigger.Equals(trigger))
-						action(t, args);
-				});
-			}
+            public bool TryFindHandlerWithUnmetGuardCondition(TTrigger trigger, out TriggerBehaviour handler)
+            {
+                return (TryFindLocalHandler(trigger, out handler, t => !t.IsGuardConditionMet) || 
+                    (Superstate != null && Superstate.TryFindHandlerWithUnmetGuardCondition(trigger, out handler)));
+            }
 
-			public void AddExitAction(TTrigger trigger, Action<Transition, object[]> action)
-			{
-				Enforce.ArgumentNotNull(action, "action");
-				_exitActions.Add((t, args) =>
-				{
-					if (t.Trigger.Equals(trigger))
-						action(t, args);
-				});
-			}
+            public void AddEntryAction(TTrigger trigger, Action<Transition, object[]> action, string entryActionDescription)
+            {
+                Enforce.ArgumentNotNull(action, nameof(action));
+                _entryActions.Add(
+                    new EntryActionBehavior((t, args) =>
+                    {
+                        if (t.Trigger.Equals(trigger))
+                            action(t, args);
+                    },
+                    Enforce.ArgumentNotNull(entryActionDescription, nameof(entryActionDescription))));
+            }
 
-			public void AddEntryAction(Action<Transition, object[]> action)
-			{
-				_entryActions.Add(Enforce.ArgumentNotNull(action, "action"));
-			}
+            public void AddEntryAction(Action<Transition, object[]> action, string entryActionDescription)
+            {
+                _entryActions.Add(
+                    new EntryActionBehavior(
+                        Enforce.ArgumentNotNull(action, nameof(action)),
+                        Enforce.ArgumentNotNull(entryActionDescription, nameof(entryActionDescription))));
+            }
 
-			public void AddExitAction(Action<Transition, object[]> action)
-			{
-				_exitActions.Add(Enforce.ArgumentNotNull(action, "action"));
-			}
+            public void AddExitAction(Action<Transition> action, string exitActionDescription)
+            {
+                _exitActions.Add(
+                    new ExitActionBehavior(
+                        Enforce.ArgumentNotNull(action, nameof(action)),
+                        Enforce.ArgumentNotNull(exitActionDescription, nameof(exitActionDescription))));
+            }
 
-			public void Enter(Transition transition, params object[] entryArgs)
-			{
-				Enforce.ArgumentNotNull(transition, "transtion");
+            public void Enter(Transition transition, params object[] entryArgs)
+            {
+                Enforce.ArgumentNotNull(transition, nameof(transition));
 
 				if (transition.IsReentry)
 				{
@@ -119,37 +127,36 @@ namespace Stateless
 				}
 			}
 
-			public void Exit(Transition transition, params object[] exitArgs)
-			{
-				Enforce.ArgumentNotNull(transition, "transtion");
+            public void Exit(Transition transition)
+            {
+                Enforce.ArgumentNotNull(transition, nameof(transition));
 
 				if (transition.IsReentry)
 				{
-					ExecuteExitActions(transition, exitArgs);
+					ExecuteExitActions(transition);
 				}
 				else if (!Includes(transition.Destination))
 				{
-					ExecuteExitActions(transition, exitArgs);
+					ExecuteExitActions(transition);
 					if (_superstate != null)
 						_superstate.Exit(transition);
 				}
 			}
 
-			void ExecuteEntryActions(Transition transition, object[] entryArgs)
-			{
-				Enforce.ArgumentNotNull(transition, "transtion");
-				Enforce.ArgumentNotNull(entryArgs, "entryArgs");
-				foreach (var action in _entryActions)
-					action(transition, entryArgs);
-			}
+            void ExecuteEntryActions(Transition transition, object[] entryArgs)
+            {
+                Enforce.ArgumentNotNull(transition, nameof(transition));
+                Enforce.ArgumentNotNull(entryArgs, nameof(entryArgs));
+                foreach (var action in _entryActions)
+                    action.Action(transition, entryArgs);
+            }
 
-			void ExecuteExitActions(Transition transition, object[] exitArgs)
-			{
-				Enforce.ArgumentNotNull(transition, "transtion");
-				Enforce.ArgumentNotNull(exitArgs, "exitArgs");
-				foreach (var action in _exitActions)
-					action(transition, exitArgs);
-			}
+            void ExecuteExitActions(Transition transition)
+            {
+                Enforce.ArgumentNotNull(transition, nameof(transition));
+                foreach (var action in _exitActions)
+                    action.Action(transition);
+            }
 
 			public void AddTriggerBehaviour(TriggerBehaviour triggerBehaviour)
 			{
@@ -182,11 +189,11 @@ namespace Stateless
 				}
 			}
 
-			public void AddSubstate(StateRepresentation substate)
-			{
-				Enforce.ArgumentNotNull(substate, "substate");
-				_substates.Add(substate);
-			}
+            public void AddSubstate(StateRepresentation substate)
+            {
+                Enforce.ArgumentNotNull(substate, nameof(substate));
+                _substates.Add(substate);
+            }
 
 			public bool Includes(TState state)
 			{

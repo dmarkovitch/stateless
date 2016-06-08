@@ -1,6 +1,10 @@
 bin
 obj
 Stateless.userprefs
+*.user
+
+# Visual Studio 2015 cache/options directory
+.vs/
 *.suo
 *.user
 /_ReSharper.Caches/ReSharperPlatformVs145.Stateless

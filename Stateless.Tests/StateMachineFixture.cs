@@ -253,10 +253,33 @@ namespace Stateless.Tests
 			sm.SetTriggerParameters<string>(Trigger.X);
 		}
 
-		[Test]
-		public void ParametersSuppliedToFireArePassedToEntryAction()
-		{
-			var sm = new StateMachine<State, Trigger>(State.B);
+        [Test]
+        [ExpectedException(typeof(InvalidOperationException), 
+            ExpectedMessage = "No valid leaving transitions are permitted from state 'A' for trigger 'X'. Consider ignoring the trigger.")]
+        public void ExceptionThrownForInvalidTransition()
+        {
+            var sm = new StateMachine<State, Trigger>(State.A);
+            sm.Fire(Trigger.X);
+        }
+
+        [Test]
+        [ExpectedException(typeof(InvalidOperationException),
+            ExpectedMessage = "Trigger 'X' is valid for transition from state 'A' but a guard condition is not met. Guard description: 'test'.")]
+        public void ExceptionThrownForInvalidTransitionMentionsGuardDescriptionIfPresent()
+        {
+            // If guard description is empty then method name of guard is used
+            // so I have skipped empty description test.
+            const string guardDescription = "test";
+
+            var sm = new StateMachine<State, Trigger>(State.A);
+            sm.Configure(State.A).PermitIf(Trigger.X, State.B, () => false, guardDescription); 
+            sm.Fire(Trigger.X);
+        }
+
+        [Test]
+        public void ParametersSuppliedToFireArePassedToEntryAction()
+        {
+            var sm = new StateMachine<State, Trigger>(State.B);
 
 			var x = sm.SetTriggerParameters<string, int>(Trigger.X);
 
