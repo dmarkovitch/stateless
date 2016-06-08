@@ -32,13 +32,13 @@ namespace Stateless
 	/// <typeparam name="TTrigger">The type used to represent the triggers that cause state transitions.</typeparam>
 	public partial class StateMachine<TState, TTrigger> : StateMachine
 	{
-		readonly IDictionary<TState, StateRepresentation> _stateConfiguration = new Dictionary<TState, StateRepresentation>();
-		readonly IDictionary<TTrigger, TriggerWithParameters> _triggerConfiguration = new Dictionary<TTrigger, TriggerWithParameters>();
-		readonly Func<TState> _stateAccessor;
-		readonly Action<TState> _stateMutator;
-		Action<TState, TTrigger> _unhandledTriggerAction;
+		private readonly IDictionary<TState, StateRepresentation> _stateConfiguration = new Dictionary<TState, StateRepresentation>();
+		private readonly IDictionary<TTrigger, TriggerWithParameters> _triggerConfiguration = new Dictionary<TTrigger, TriggerWithParameters>();
+		private readonly Func<TState> _stateAccessor;
+		private readonly Action<TState> _stateMutator;
+		private Action<TState, TTrigger> _unhandledTriggerAction;
 		private Action<Transition> _allStateOnEntry;
-		event Action<Transition> _onTransitioned;
+		private event Action<Transition> _onTransitioned;
 		private readonly Dictionary<TTrigger, TriggerBehaviour> _globalTriggerBehaviours =
 			new Dictionary<TTrigger, TriggerBehaviour>();
 
@@ -67,7 +67,7 @@ namespace Stateless
 		/// <summary>
 		/// Default constuctor
 		/// </summary>
-		StateMachine()
+		private StateMachine()
 		{
 			_unhandledTriggerAction = DefaultUnhandledTriggerAction;
 		}
@@ -101,9 +101,9 @@ namespace Stateless
 		/// </summary>
 		public IEnumerable<TTrigger> PermittedTriggers => CurrentRepresentation.PermittedTriggers;
 
-		StateRepresentation CurrentRepresentation => GetRepresentation(State);
+		private StateRepresentation CurrentRepresentation => GetRepresentation(State);
 
-		StateRepresentation GetRepresentation(TState state)
+		private StateRepresentation GetRepresentation(TState state)
 		{
 			StateRepresentation result;
 
@@ -243,7 +243,7 @@ namespace Stateless
 			InternalFire(trigger.Trigger, arg0, arg1, arg2);
 		}
 
-		void InternalFire(TTrigger trigger, params object[] args)
+		private void InternalFire(TTrigger trigger, params object[] args)
 		{
 			TriggerWithParameters configuration;
 			if (_triggerConfiguration.TryGetValue(trigger, out configuration))
@@ -371,7 +371,7 @@ namespace Stateless
 			return configuration;
 		}
 
-		void SaveTriggerConfiguration(TriggerWithParameters trigger)
+		private void SaveTriggerConfiguration(TriggerWithParameters trigger)
 		{
 			if (_triggerConfiguration.ContainsKey(trigger.Trigger))
 				throw new InvalidOperationException(
@@ -380,7 +380,7 @@ namespace Stateless
 			_triggerConfiguration.Add(trigger.Trigger, trigger);
 		}
 
-		void DefaultUnhandledTriggerAction(TState state, TTrigger trigger)
+		private void DefaultUnhandledTriggerAction(TState state, TTrigger trigger)
 		{
 			var source = state;
 			var representativeState = GetRepresentation(source);
