@@ -11,21 +11,11 @@ namespace Stateless
 		{
 			readonly TState _destination;
 
-<<<<<<< HEAD
 			public TransitioningTriggerBehaviour(TTrigger trigger, TState destination, Func<bool> guard)
 				: base(trigger, guard)
 			{
 				_destination = destination;
 			}
-=======
-            internal TState Destination { get { return _destination; } }
-
-            public TransitioningTriggerBehaviour(TTrigger trigger, TState destination, Func<bool> guard)
-                : base(trigger, guard)
-            {
-                _destination = destination;
-            }
->>>>>>> refs/remotes/nblumhardt/master
 
 			public override bool ResultsInTransitionFrom(TState source, object[] args, out TState destination)
 			{
