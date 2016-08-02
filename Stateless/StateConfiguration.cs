@@ -348,83 +348,83 @@ namespace Stateless
                 return this;
             }
 
-            /// <summary>
-            /// Sets the superstate that the configured state is a substate of.
-            /// </summary>
-            /// <remarks>
-            /// Substates inherit the allowed transitions of their superstate.
-            /// When entering directly into a substate from outside of the superstate,
-            /// entry actions for the superstate are executed.
-            /// Likewise when leaving from the substate to outside the supserstate,
-            /// exit actions for the superstate will execute.
-            /// </remarks>
-            /// <param name="superstate">The superstate.</param>
-            /// <returns>The receiver.</returns>
-            public StateConfiguration SubstateOf(TState superstate)
-            {
-                var superRepresentation = _lookup(superstate);
-                _representation.Superstate = superRepresentation;
-                superRepresentation.AddSubstate(_representation);
-                return this;
-            }
+			/// <summary>
+			/// Sets the superstate that the configured state is a substate of.
+			/// </summary>
+			/// <remarks>
+			/// Substates inherit the allowed transitions of their superstate.
+			/// When entering directly into a substate from outside of the superstate,
+			/// entry actions for the superstate are executed.
+			/// Likewise when leaving from the substate to outside the supserstate,
+			/// exit actions for the superstate will execute.
+			/// </remarks>
+			/// <param name="superstate">The superstate.</param>
+			/// <returns>The receiver.</returns>
+			public StateConfiguration SubstateOf(TState superstate)
+			{
+				var superRepresentation = _lookup(superstate);
+				_representation.Superstate = superRepresentation;
+				superRepresentation.AddSubstate(_representation);
+				return this;
+			}
 
-            /// <summary>
-            /// Accept the specified trigger and transition to the destination state, calculated
-            /// dynamically by the supplied function.
-            /// </summary>
-            /// <param name="trigger">The accepted trigger.</param>
-            /// <param name="destinationStateSelector">Function to calculate the state 
-            /// that the trigger will cause a transition to.</param>
-            /// <returns>The reciever.</returns>
-            public StateConfiguration PermitDynamic(TTrigger trigger, Func<TState> destinationStateSelector)
-            {
-                return PermitDynamicIf(trigger, destinationStateSelector, NoGuard);
-            }
+			/// <summary>
+			/// Accept the specified trigger and transition to the destination state, calculated
+			/// dynamically by the supplied function.
+			/// </summary>
+			/// <param name="trigger">The accepted trigger.</param>
+			/// <param name="destinationStateSelector">Function to calculate the state 
+			/// that the trigger will cause a transition to.</param>
+			/// <returns>The reciever.</returns>
+			public StateConfiguration PermitDynamic(TTrigger trigger, Func<TState> destinationStateSelector)
+			{
+				return PermitDynamicIf(trigger, destinationStateSelector, NoGuard);
+			}
 
-            /// <summary>
-            /// Accept the specified trigger and transition to the destination state, calculated
-            /// dynamically by the supplied function.
-            /// </summary>
-            /// <param name="trigger">The accepted trigger.</param>
-            /// <param name="destinationStateSelector">Function to calculate the state 
-            /// that the trigger will cause a transition to.</param>
-            /// <returns>The reciever.</returns>
-            /// <typeparam name="TArg0">Type of the first trigger argument.</typeparam>
-            public StateConfiguration PermitDynamic<TArg0>(TriggerWithParameters<TArg0> trigger, Func<TArg0, TState> destinationStateSelector)
-            {
-                return PermitDynamicIf(trigger, destinationStateSelector, NoGuard);
-            }
+			/// <summary>
+			/// Accept the specified trigger and transition to the destination state, calculated
+			/// dynamically by the supplied function.
+			/// </summary>
+			/// <param name="trigger">The accepted trigger.</param>
+			/// <param name="destinationStateSelector">Function to calculate the state 
+			/// that the trigger will cause a transition to.</param>
+			/// <returns>The reciever.</returns>
+			/// <typeparam name="TArg0">Type of the first trigger argument.</typeparam>
+			public StateConfiguration PermitDynamic<TArg0>(TriggerWithParameters<TArg0> trigger, Func<TArg0, TState> destinationStateSelector)
+			{
+				return PermitDynamicIf(trigger, destinationStateSelector, NoGuard);
+			}
 
-            /// <summary>
-            /// Accept the specified trigger and transition to the destination state, calculated
-            /// dynamically by the supplied function.
-            /// </summary>
-            /// <param name="trigger">The accepted trigger.</param>
-            /// <param name="destinationStateSelector">Function to calculate the state 
-            /// that the trigger will cause a transition to.</param>
-            /// <returns>The reciever.</returns>
-            /// <typeparam name="TArg0">Type of the first trigger argument.</typeparam>
-            /// <typeparam name="TArg1">Type of the second trigger argument.</typeparam>
-            public StateConfiguration PermitDynamic<TArg0, TArg1>(TriggerWithParameters<TArg0, TArg1> trigger, Func<TArg0, TArg1, TState> destinationStateSelector)
-            {
-                return PermitDynamicIf(trigger, destinationStateSelector, NoGuard);
-            }
+			/// <summary>
+			/// Accept the specified trigger and transition to the destination state, calculated
+			/// dynamically by the supplied function.
+			/// </summary>
+			/// <param name="trigger">The accepted trigger.</param>
+			/// <param name="destinationStateSelector">Function to calculate the state 
+			/// that the trigger will cause a transition to.</param>
+			/// <returns>The reciever.</returns>
+			/// <typeparam name="TArg0">Type of the first trigger argument.</typeparam>
+			/// <typeparam name="TArg1">Type of the second trigger argument.</typeparam>
+			public StateConfiguration PermitDynamic<TArg0, TArg1>(TriggerWithParameters<TArg0, TArg1> trigger, Func<TArg0, TArg1, TState> destinationStateSelector)
+			{
+				return PermitDynamicIf(trigger, destinationStateSelector, NoGuard);
+			}
 
-            /// <summary>
-            /// Accept the specified trigger and transition to the destination state, calculated
-            /// dynamically by the supplied function.
-            /// </summary>
-            /// <param name="trigger">The accepted trigger.</param>
-            /// <param name="destinationStateSelector">Function to calculate the state 
-            /// that the trigger will cause a transition to.</param>
-            /// <returns>The reciever.</returns>
-            /// <typeparam name="TArg0">Type of the first trigger argument.</typeparam>
-            /// <typeparam name="TArg1">Type of the second trigger argument.</typeparam>
-            /// <typeparam name="TArg2">Type of the third trigger argument.</typeparam>
-            public StateConfiguration PermitDynamic<TArg0, TArg1, TArg2>(TriggerWithParameters<TArg0, TArg1, TArg2> trigger, Func<TArg0, TArg1, TArg2, TState> destinationStateSelector)
-            {
-                return PermitDynamicIf(trigger, destinationStateSelector, NoGuard);
-            }
+			/// <summary>
+			/// Accept the specified trigger and transition to the destination state, calculated
+			/// dynamically by the supplied function.
+			/// </summary>
+			/// <param name="trigger">The accepted trigger.</param>
+			/// <param name="destinationStateSelector">Function to calculate the state 
+			/// that the trigger will cause a transition to.</param>
+			/// <returns>The reciever.</returns>
+			/// <typeparam name="TArg0">Type of the first trigger argument.</typeparam>
+			/// <typeparam name="TArg1">Type of the second trigger argument.</typeparam>
+			/// <typeparam name="TArg2">Type of the third trigger argument.</typeparam>
+			public StateConfiguration PermitDynamic<TArg0, TArg1, TArg2>(TriggerWithParameters<TArg0, TArg1, TArg2> trigger, Func<TArg0, TArg1, TArg2, TState> destinationStateSelector)
+			{
+				return PermitDynamicIf(trigger, destinationStateSelector, NoGuard);
+			}
 
 
             /// <summary>
@@ -526,13 +526,13 @@ namespace Stateless
                     guardDescription != null ? guardDescription : guard?.Method.Name);
             }
 
-            void EnforceNotIdentityTransition(TState destination)
-            {
-                if (destination.Equals(_representation.UnderlyingState))
-                {
-                    throw new ArgumentException(StateConfigurationResources.SelfTransitionsEitherIgnoredOrReentrant);
-                }
-            }
+			void EnforceNotIdentityTransition(TState destination)
+			{
+				if (destination.Equals(_representation.UnderlyingState))
+				{
+					throw new ArgumentException(StateConfigurationResources.SelfTransitionsEitherIgnoredOrReentrant);
+				}
+			}
 
             StateConfiguration InternalPermit(TTrigger trigger, TState destinationState, string guardDescription)
             {

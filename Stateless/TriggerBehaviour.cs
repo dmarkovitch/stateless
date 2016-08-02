@@ -24,15 +24,15 @@ namespace Stateless
             internal Func<bool> Guard { get { return _guard; } }
             internal string GuardDescription{ get { return _guardDescription ; } }
 
-            public bool IsGuardConditionMet
-            {
-                get
-                {
-                    return _guard();
-                }
-            }
+			public bool IsGuardConditionMet
+			{
+				get
+				{
+					return _guard();
+				}
+			}
 
-            public abstract bool ResultsInTransitionFrom(TState source, object[] args, out TState destination);
-        }
-    }
+			public abstract bool ResultsInTransitionFrom(TState source, object[] args, out TState destination);
+		}
+	}
 }

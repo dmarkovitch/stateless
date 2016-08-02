@@ -5,205 +5,253 @@ using NUnit.Framework;
 
 namespace Stateless.Tests
 {
-    [TestFixture]
-    public class StateMachineFixture
-    {
-        const string
-            StateA = "A", StateB = "B", StateC = "C",
-            TriggerX = "X", TriggerY = "Y";
+	[TestFixture]
+	public class StateMachineFixture
+	{
+		const string
+			StateA = "A", StateB = "B", StateC = "C",
+			TriggerX = "X", TriggerY = "Y";
 
-        [Test]
-        public void CanUseReferenceTypeMarkers()
-        {
-            RunSimpleTest(
-                new[] { StateA, StateB, StateC },
-                new[] { TriggerX, TriggerY });
-        }
+		[Test]
+		public void CanUseReferenceTypeMarkers()
+		{
+			RunSimpleTest(
+				new[] { StateA, StateB, StateC },
+				new[] { TriggerX, TriggerY });
+		}
 
-        [Test]
-        public void CanUseValueTypeMarkers()
-        {
-            RunSimpleTest(
-                Enum.GetValues(typeof(State)).Cast<State>(),
-                Enum.GetValues(typeof(Trigger)).Cast<Trigger>());
-        }
+		[Test]
+		public void CanUseValueTypeMarkers()
+		{
+			RunSimpleTest(
+				Enum.GetValues(typeof(State)).Cast<State>(),
+				Enum.GetValues(typeof(Trigger)).Cast<Trigger>());
+		}
 
-        void RunSimpleTest<TState, TTransition>(IEnumerable<TState> states, IEnumerable<TTransition> transitions)
-        {
-            var a = states.First();
-            var b = states.Skip(1).First();
-            var x = transitions.First();
+		static void RunSimpleTest<TState, TTransition>(IEnumerable<TState> states, IEnumerable<TTransition> transitions)
+		{
+			var a = states.First();
+			var b = states.Skip(1).First();
+			var x = transitions.First();
 
-            var sm = new StateMachine<TState, TTransition>(a);
+			var sm = new StateMachine<TState, TTransition>(a);
 
-            sm.Configure(a)
-                .Permit(x, b);
+			sm.Configure(a)
+				.Permit(x, b);
 
-            sm.Fire(x);
+			sm.Fire(x);
 
-            Assert.AreEqual(b, sm.State);
-        }
+			Assert.AreEqual(b, sm.State);
+		}
 
-        [Test]
-        public void InitialStateIsCurrent()
-        {
-            var initial = State.B;
-            var sm = new StateMachine<State, Trigger>(initial);
-            Assert.AreEqual(initial, sm.State);
-        }
+		[Test]
+		public void InitialStateIsCurrent()
+		{
+			var initial = State.B;
+			var sm = new StateMachine<State, Trigger>(initial);
+			Assert.AreEqual(initial, sm.State);
+		}
 
-        [Test]
-        public void StateCanBeStoredExternally()
-        {
-            var state = State.B;
-            var sm = new StateMachine<State, Trigger>(() => state, s => state = s);
-            sm.Configure(State.B).Permit(Trigger.X, State.C);
-            Assert.AreEqual(State.B, sm.State);
-            Assert.AreEqual(State.B, state);
-            sm.Fire(Trigger.X);
-            Assert.AreEqual(State.C, sm.State);
-            Assert.AreEqual(State.C, state);
-        }
+		[Test]
+		public void StateCanBeStoredExternally()
+		{
+			var state = State.B;
+			var sm = new StateMachine<State, Trigger>(() => state, s => state = s);
+			sm.Configure(State.B).Permit(Trigger.X, State.C);
+			Assert.AreEqual(State.B, sm.State);
+			Assert.AreEqual(State.B, state);
+			sm.Fire(Trigger.X);
+			Assert.AreEqual(State.C, sm.State);
+			Assert.AreEqual(State.C, state);
+		}
 
-        [Test]
-        public void SubstateIsIncludedInCurrentState()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
-            sm.Configure(State.B).SubstateOf(State.C);
+		[Test]
+		public void SubstateIsIncludedInCurrentState()
+		{
+			var sm = new StateMachine<State, Trigger>(State.B);
+			sm.Configure(State.B).SubstateOf(State.C);
 
-            Assert.AreEqual(State.B, sm.State);
-            Assert.IsTrue(sm.IsInState(State.C));
-        }
+			Assert.AreEqual(State.B, sm.State);
+			Assert.IsTrue(sm.IsInState(State.C));
+		}
 
-        [Test]
-        public void WhenInSubstate_TriggerIgnoredInSuperstate_RemainsInSubstate()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
+		[Test]
+		public void WhenInSubstate_TriggerIgnoredInSuperstate_RemainsInSubstate()
+		{
+			var sm = new StateMachine<State, Trigger>(State.B);
 
-            sm.Configure(State.B)
-                .SubstateOf(State.C);
+			sm.Configure(State.B)
+				.SubstateOf(State.C);
 
-            sm.Configure(State.C)
-                .Ignore(Trigger.X);
+			sm.Configure(State.C)
+				.Ignore(Trigger.X);
 
-            sm.Fire(Trigger.X);
+			sm.Fire(Trigger.X);
 
-            Assert.AreEqual(State.B, sm.State);
-        }
+			Assert.AreEqual(State.B, sm.State);
+		}
 
-        [Test]
-        public void PermittedTriggersIncludeSuperstatePermittedTriggers()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
+		[Test]
+		public void WhenInTerminalState_TriggerIgnored_RemainsInSubstate()
+		{
+			var sm = new StateMachine<State, Trigger>(State.B);
 
-            sm.Configure(State.A)
-                .Permit(Trigger.Z, State.B);
+			sm.Configure(State.B).Permit(Trigger.X, State.C);
 
-            sm.Configure(State.B)
-                .SubstateOf(State.C)
-                .Permit(Trigger.X, State.A);
+			sm.ConfigureTerminal(State.C);
 
-            sm.Configure(State.C)
-                .Permit(Trigger.Y, State.A);
+			sm.Fire(Trigger.X);
+			sm.Fire(Trigger.Y);
 
-            var permitted = sm.PermittedTriggers;
+			Assert.AreEqual(State.C, sm.State);
+		}
 
-            Assert.IsTrue(permitted.Contains(Trigger.X));
-            Assert.IsTrue(permitted.Contains(Trigger.Y));
-            Assert.IsFalse(permitted.Contains(Trigger.Z));
-        }
+		[Test]
+		public void WhenInTerminalState_StateReportedAsTerminal()
+		{
+			var sm = new StateMachine<State, Trigger>(State.B);
 
-        [Test]
-        public void PermittedTriggersAreDistinctValues()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
+			sm.Configure(State.B).Permit(Trigger.X, State.C);
 
-            sm.Configure(State.B)
-                .SubstateOf(State.C)
-                .Permit(Trigger.X, State.A);
+			sm.ConfigureTerminal(State.C);
 
-            sm.Configure(State.C)
-                .Permit(Trigger.X, State.B);
+			sm.Fire(Trigger.X);
+			sm.Fire(Trigger.Y);
 
-            var permitted = sm.PermittedTriggers;
-            Assert.AreEqual(1, permitted.Count());
-            Assert.AreEqual(Trigger.X, permitted.First());
-        }
+			Assert.AreEqual(State.C, sm.State);
+			Assert.IsTrue(sm.IsInTerminalState);
+		}
 
-        [Test]
-        public void AcceptedTriggersRespectGuards()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
+		[Test]
+		public void WhenTriggerIsGlobal_TriggerExecuted_StateReportedCorrectly()
+		{
+			var sm = new StateMachine<State, Trigger>(State.A);
 
-            sm.Configure(State.B)
-                .PermitIf(Trigger.X, State.A, () => false);
+			sm.ConfigureGlobalTriggers(new[] { Trigger.Z }, State.C);
 
-            Assert.AreEqual(0, sm.PermittedTriggers.Count());
-        }
+			sm.Configure(State.A).Permit(Trigger.X, State.B);
 
-        [Test]
-        public void WhenDiscriminatedByGuard_ChoosesPermitedTransition()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
+			sm.ConfigureTerminal(State.C);
 
-            sm.Configure(State.B)
-                .PermitIf(Trigger.X, State.A, () => false)
-                .PermitIf(Trigger.X, State.C, () => true);
+			sm.Fire(Trigger.X);
+			sm.Fire(Trigger.Z);
 
-            sm.Fire(Trigger.X);
+			Assert.AreEqual(State.C, sm.State);
+		}
 
-            Assert.AreEqual(State.C, sm.State);
-        }
+		[Test]
+		public void PermittedTriggersIncludeSuperstatePermittedTriggers()
+		{
+			var sm = new StateMachine<State, Trigger>(State.B);
 
-        [Test]
-        public void WhenTriggerIsIgnored_ActionsNotExecuted()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
+			sm.Configure(State.A)
+				.Permit(Trigger.Z, State.B);
 
-            bool fired = false;
+			sm.Configure(State.B)
+				.SubstateOf(State.C)
+				.Permit(Trigger.X, State.A);
 
-            sm.Configure(State.B)
-                .OnEntry(t => fired = true)
-                .Ignore(Trigger.X);
+			sm.Configure(State.C)
+				.Permit(Trigger.Y, State.A);
 
-            sm.Fire(Trigger.X);
+			var permitted = sm.PermittedTriggers;
 
-            Assert.IsFalse(fired);
-        }
+			Assert.IsTrue(permitted.Contains(Trigger.X));
+			Assert.IsTrue(permitted.Contains(Trigger.Y));
+			Assert.IsFalse(permitted.Contains(Trigger.Z));
+		}
 
-        [Test]
-        public void IfSelfTransitionPermited_ActionsFire()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
+		[Test]
+		public void PermittedTriggersAreDistinctValues()
+		{
+			var sm = new StateMachine<State, Trigger>(State.B);
 
-            bool fired = false;
+			sm.Configure(State.B)
+				.SubstateOf(State.C)
+				.Permit(Trigger.X, State.A);
 
-            sm.Configure(State.B)
-                .OnEntry(t => fired = true)
-                .PermitReentry(Trigger.X);
+			sm.Configure(State.C)
+				.Permit(Trigger.X, State.B);
 
-            sm.Fire(Trigger.X);
+			var permitted = sm.PermittedTriggers;
+			Assert.AreEqual(1, permitted.Count());
+			Assert.AreEqual(Trigger.X, permitted.First());
+		}
 
-            Assert.IsTrue(fired);
-        }
+		[Test]
+		public void AcceptedTriggersRespectGuards()
+		{
+			var sm = new StateMachine<State, Trigger>(State.B);
 
-        [Test, ExpectedException(typeof(ArgumentException))]
-        public void ImplicitReentryIsDisallowed()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
+			sm.Configure(State.B)
+				.PermitIf(Trigger.X, State.A, () => false);
 
-            sm.Configure(State.B)
-                .Permit(Trigger.X, State.B);
-        }
+			Assert.AreEqual(0, sm.PermittedTriggers.Count());
+		}
 
-        [Test, ExpectedException(typeof(InvalidOperationException))]
-        public void TriggerParametersAreImmutableOnceSet()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
+		[Test]
+		public void WhenDiscriminatedByGuard_ChoosesPermitedTransition()
+		{
+			var sm = new StateMachine<State, Trigger>(State.B);
 
-            sm.SetTriggerParameters<string, int>(Trigger.X);
-            sm.SetTriggerParameters<string>(Trigger.X);
-        }
+			sm.Configure(State.B)
+				.PermitIf(Trigger.X, State.A, () => false)
+				.PermitIf(Trigger.X, State.C, () => true);
+
+			sm.Fire(Trigger.X);
+
+			Assert.AreEqual(State.C, sm.State);
+		}
+
+		[Test]
+		public void WhenTriggerIsIgnored_ActionsNotExecuted()
+		{
+			var sm = new StateMachine<State, Trigger>(State.B);
+
+			bool fired = false;
+
+			sm.Configure(State.B)
+				.OnEntry(t => fired = true)
+				.Ignore(Trigger.X);
+
+			sm.Fire(Trigger.X);
+
+			Assert.IsFalse(fired);
+		}
+
+		[Test]
+		public void IfSelfTransitionPermited_ActionsFire()
+		{
+			var sm = new StateMachine<State, Trigger>(State.B);
+
+			bool fired = false;
+
+			sm.Configure(State.B)
+				.OnEntry(t => fired = true)
+				.PermitReentry(Trigger.X);
+
+			sm.Fire(Trigger.X);
+
+			Assert.IsTrue(fired);
+		}
+
+		[Test, ExpectedException(typeof(ArgumentException))]
+		public void ImplicitReentryIsDisallowed()
+		{
+			var sm = new StateMachine<State, Trigger>(State.B);
+
+			sm.Configure(State.B)
+				.Permit(Trigger.X, State.B);
+		}
+
+		[Test, ExpectedException(typeof(InvalidOperationException))]
+		public void TriggerParametersAreImmutableOnceSet()
+		{
+			var sm = new StateMachine<State, Trigger>(State.B);
+
+			sm.SetTriggerParameters<string, int>(Trigger.X);
+			sm.SetTriggerParameters<string>(Trigger.X);
+		}
 
         [Test]
         [ExpectedException(typeof(InvalidOperationException), 
@@ -233,91 +281,47 @@ namespace Stateless.Tests
         {
             var sm = new StateMachine<State, Trigger>(State.B);
 
-            var x = sm.SetTriggerParameters<string, int>(Trigger.X);
+			var x = sm.SetTriggerParameters<string, int>(Trigger.X);
 
-            sm.Configure(State.B)
-                .Permit(Trigger.X, State.C);
+			sm.Configure(State.B)
+				.Permit(Trigger.X, State.C);
 
-            string entryArgS = null;
-            int entryArgI = 0;
+			string entryArgS = null;
+			int entryArgI = 0;
 
-            sm.Configure(State.C)
-                .OnEntryFrom(x, (s, i) =>
-                {
-                    entryArgS = s;
-                    entryArgI = i;
-                });
+			sm.Configure(State.C)
+				.OnEntryFrom(x, (s, i) =>
+				{
+					entryArgS = s;
+					entryArgI = i;
+				});
 
-            var suppliedArgS = "something";
-            var suppliedArgI = 42;
+			var suppliedArgS = "something";
+			var suppliedArgI = 42;
 
-            sm.Fire(x, suppliedArgS, suppliedArgI);
+			sm.Fire(x, suppliedArgS, suppliedArgI);
 
-            Assert.AreEqual(suppliedArgS, entryArgS);
-            Assert.AreEqual(suppliedArgI, entryArgI);
-        }
+			Assert.AreEqual(suppliedArgS, entryArgS);
+			Assert.AreEqual(suppliedArgI, entryArgI);
+		}
 
-        [Test]
-        public void WhenAnUnhandledTriggerIsFired_TheProvidedHandlerIsCalledWithStateAndTrigger()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
+		[Test]
+		public void WhenAnUnhandledTriggerIsFired_TheProvidedHandlerIsCalledWithStateAndTrigger()
+		{
+			var sm = new StateMachine<State, Trigger>(State.B);
 
-            State? state = null;
-            Trigger? trigger = null;
-            sm.OnUnhandledTrigger((s, t) =>
-                                      {
-                                          state = s;
-                                          trigger = t;
-                                      });
+			State? state = null;
+			Trigger? trigger = null;
+			sm.OnUnhandledTrigger((s, t) =>
+									  {
+										  state = s;
+										  trigger = t;
+									  });
 
-            sm.Fire(Trigger.Z);
+			sm.Fire(Trigger.Z);
 
-            Assert.AreEqual(State.B, state);
-            Assert.AreEqual(Trigger.Z, trigger);
-        }
-
-        [Test]
-        public void WhenATransitionOccurs_TheOnTransitionEventFires()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
-
-            sm.Configure(State.B)
-                .Permit(Trigger.X, State.A);
-
-            StateMachine<State, Trigger>.Transition transition = null;
-            sm.OnTransitioned(t => transition = t);
-
-            sm.Fire(Trigger.X);
-
-            Assert.IsNotNull(transition);
-            Assert.AreEqual(Trigger.X, transition.Trigger);
-            Assert.AreEqual(State.B, transition.Source);
-            Assert.AreEqual(State.A, transition.Destination);
-        }
-
-        [Test]
-        public void TheOnTransitionEventFiresBeforeTheOnEntryEvent()
-        {
-            var sm = new StateMachine<State, Trigger>(State.B);
-            var expectedOrdering = new List<string> { "OnExit", "OnTransitioned", "OnEntry" };
-            var actualOrdering = new List<string>();
-
-            sm.Configure(State.B)
-                .Permit(Trigger.X, State.A)
-                .OnExit(() => actualOrdering.Add("OnExit"));
-
-            sm.Configure(State.A)
-                .OnEntry(() => actualOrdering.Add("OnEntry"));
-
-            sm.OnTransitioned(t => actualOrdering.Add("OnTransitioned"));
-
-            sm.Fire(Trigger.X);
-
-            Assert.AreEqual(expectedOrdering.Count, actualOrdering.Count);
-            for (int i = 0; i < expectedOrdering.Count; i++)
-            {
-                Assert.AreEqual(expectedOrdering[i], actualOrdering[i]);
-            }
-        }
-    }
+			Assert.AreEqual(State.B, state);
+			Assert.AreEqual(Trigger.Z, trigger);
+		}
+	}
 }
