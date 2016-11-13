@@ -264,9 +264,8 @@ namespace Stateless
             TState destination;
             if (!triggerBehaviour.ResultsInTransitionFrom(source, args, out destination))
             {
-                var transition = new Transition(source, destination, trigger);
 
-                CurrentRepresentation.InternalAction(transition, args);
+                CurrentRepresentation.InternalAction(new Transition(source, destination, trigger), args);
 
                 return;
             }
