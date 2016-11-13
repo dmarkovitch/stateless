@@ -6,99 +6,124 @@ using Stateless;
 
 namespace TelephoneCallExample
 {
-	class Program
-	{
-		enum Trigger
-		{
-			CallDialed,
-			HungUp,
-			CallConnected,
-			LeftMessage,
-			PlacedOnHold,
-			TakenOffHold,
-			PhoneHurledAgainstWall
-		}
+    class Program
+    {
+        enum Trigger
+        {
+            CallDialed,
+            HungUp,
+            CallConnected,
+            LeftMessage,
+            PlacedOnHold,
+            TakenOffHold,
+            PhoneHurledAgainstWall,
+            MuteMicrophone,
+            UnmuteMicrophone,
+            SetVolume
+        }
 
-		enum State
-		{
-			OffHook,
-			Ringing,
-			Connected,
-			OnHold,
-			PhoneDestroyed
-		}
+        enum State
+        {
+            OffHook,
+            Ringing,
+            Connected,
+            OnHold,
+            PhoneDestroyed
+        }
 
-		static void Main(string[] args)
-		{
-			var phoneCall = new StateMachine<State, Trigger>(State.OffHook);
+        static StateMachine<State, Trigger>.TriggerWithParameters<int> setVolumeTrigger;
 
-			phoneCall.Configure(State.OffHook)
-				.Permit(Trigger.CallDialed, State.Ringing);
+        static void Main(string[] args)
+        {
+            var phoneCall = new StateMachine<State, Trigger>(State.OffHook);
+            setVolumeTrigger = phoneCall.SetTriggerParameters<int>(Trigger.SetVolume);
 
-			phoneCall.Configure(State.Ringing)
-				.Permit(Trigger.HungUp, State.OffHook)
-				.Permit(Trigger.CallConnected, State.Connected);
+            phoneCall.Configure(State.OffHook)
+	            .Permit(Trigger.CallDialed, State.Ringing);
 
-			phoneCall.Configure(State.Connected)
-				.OnEntry(t => StartCallTimer())
-				.OnExit(t => StopCallTimer())
-				.OnEntryFrom(Trigger.CallConnected, TestEntryFrom)
-				//.OnExitFrom(Trigger.PlacedOnHold, TestExitFrom)
-				.Permit(Trigger.LeftMessage, State.OffHook)
-				.Permit(Trigger.HungUp, State.OffHook)
-				.Permit(Trigger.PlacedOnHold, State.OnHold);
+            phoneCall.Configure(State.Ringing)
+	            .Permit(Trigger.HungUp, State.OffHook)
+	            .Permit(Trigger.CallConnected, State.Connected);
 
-			phoneCall.Configure(State.OnHold)
-				.SubstateOf(State.Connected)
-				.Permit(Trigger.TakenOffHold, State.Connected)
-				.Permit(Trigger.HungUp, State.OffHook)
-				.Permit(Trigger.PhoneHurledAgainstWall, State.PhoneDestroyed);
+            phoneCall.Configure(State.Connected)
+                .OnEntry(t => StartCallTimer())
+                .OnExit(t => StopCallTimer())
+                .InternalTransition(Trigger.MuteMicrophone, t => OnMute())
+                .InternalTransition(Trigger.UnmuteMicrophone, t => OnUnmute())
+                .InternalTransition<int>(setVolumeTrigger, (volume, t) => OnSetVolume(volume))
+                .Permit(Trigger.LeftMessage, State.OffHook)
+	            .Permit(Trigger.HungUp, State.OffHook)
+	            .Permit(Trigger.PlacedOnHold, State.OnHold);
 
-			//Print(phoneCall);
-			Fire(phoneCall, Trigger.CallDialed);
-			//Print(phoneCall);
-			Fire(phoneCall, Trigger.CallConnected);
-			//Print(phoneCall);
-			Fire(phoneCall, Trigger.PlacedOnHold);
-			//Print(phoneCall);
-			Fire(phoneCall, Trigger.TakenOffHold);
-			//Print(phoneCall);
-			Fire(phoneCall, Trigger.HungUp);
-			//Print(phoneCall);
+            phoneCall.Configure(State.OnHold)
+                .SubstateOf(State.Connected)
+                .Permit(Trigger.TakenOffHold, State.Connected)
+                .Permit(Trigger.HungUp, State.OffHook)
+                .Permit(Trigger.PhoneHurledAgainstWall, State.PhoneDestroyed);
 
-			Console.WriteLine("Press any key...");
-			Console.ReadKey(true);
-		}
+            Print(phoneCall);
+            Fire(phoneCall, Trigger.CallDialed);
+            Print(phoneCall);
+            Fire(phoneCall, Trigger.CallConnected);
+            Print(phoneCall);
+            SetVolume(phoneCall, 2);
+            Print(phoneCall);
+            Fire(phoneCall, Trigger.PlacedOnHold);
+            Print(phoneCall);
+            Fire(phoneCall, Trigger.MuteMicrophone);
+            Print(phoneCall);
+            Fire(phoneCall, Trigger.UnmuteMicrophone);
+            Print(phoneCall);
+            Fire(phoneCall, Trigger.TakenOffHold);
+            Print(phoneCall);
+            SetVolume(phoneCall, 11);
+            Print(phoneCall);
+            Fire(phoneCall, Trigger.HungUp);
+            Print(phoneCall);
 
-		private static void TestEntryFrom()
-		{
-			Console.WriteLine("You entered from");
-		}
+            Console.WriteLine("Press any key...");
+            Console.ReadKey(true);
+        }
 
-		private static void TestExitFrom()
-		{
-			Console.WriteLine("You exited from");
-		}
+        private static void OnSetVolume(int volume)
+        {
+            Console.WriteLine("Volume set to " + volume + "!");
+        }
 
-		static void StartCallTimer()
-		{
-			Console.WriteLine("[Timer:] Call started at {0}", DateTime.Now);
-		}
+        private static void OnUnmute()
+        {
+            Console.WriteLine("Microphone muted!");
+        }
 
-		static void StopCallTimer()
-		{
-			Console.WriteLine("[Timer:] Call ended at {0}", DateTime.Now);
-		}
+        private static void OnMute()
+        {
+            Console.WriteLine("Microphone muted!");
+        }
 
-		static void Fire(StateMachine<State, Trigger> phoneCall, Trigger trigger)
-		{
-			Console.WriteLine("[Firing:] {0}", trigger);
-			phoneCall.Fire(trigger);
-		}
 
-		static void Print(StateMachine<State, Trigger> phoneCall)
-		{
-			Console.WriteLine("[Status:] {0}", phoneCall);
-		}
-	}
+        static void StartCallTimer()
+        {
+            Console.WriteLine("[Timer:] Call started at {0}", DateTime.Now);
+        }
+
+        static void StopCallTimer()
+        {
+            Console.WriteLine("[Timer:] Call ended at {0}", DateTime.Now);
+        }
+
+        static void Fire(StateMachine<State, Trigger> phoneCall, Trigger trigger)
+        {
+            Console.WriteLine("[Firing:] {0}", trigger);
+            phoneCall.Fire(trigger);
+        }
+        static void SetVolume(StateMachine<State, Trigger> phoneCall, int volume)
+        {
+            phoneCall.Fire(setVolumeTrigger, volume);
+        }
+
+        static void Print(StateMachine<State, Trigger> phoneCall)
+        {
+            Console.WriteLine("[Status:] {0}", phoneCall);
+        }
+    }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 
 namespace Stateless
@@ -26,14 +27,23 @@ namespace Stateless
                         if (behaviour is TransitioningTriggerBehaviour)
                         {
                             destination = ((TransitioningTriggerBehaviour)behaviour).Destination.ToString ();
-                        } 
+                        }
+                        else if (behaviour is IgnoredTriggerBehaviour)
+                        {
+                            continue; 
+                        }
+                        else if (behaviour is InternalTriggerBehaviour)
+                        {
+                            // Internal transitions are for the moment displayed (re-entrant) self-transitions, even though no exit or entry transition occurs
+                            destination = stateCfg.Key.ToString();
+                        }
                         else 
                         {
                             destination = "unknownDestination_" + unknownDestinations.Count;
                             unknownDestinations.Add(destination);
                         }
 
-                        string line = (behaviour.Guard.Method.DeclaringType.Namespace.Equals("Stateless")) ?
+                        string line = (behaviour.Guard.TryGetMethodInfo().DeclaringType.Namespace.Equals("Stateless")) ?
                             string.Format(" {0} -> {1} [label=\"{2}\"];", source, destination, behaviour.Trigger) :
                             string.Format(" {0} -> {1} [label=\"{2} [{3}]\"];", source, destination, behaviour.Trigger, behaviour.GuardDescription);
 
